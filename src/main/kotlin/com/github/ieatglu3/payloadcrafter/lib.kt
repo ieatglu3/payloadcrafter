@@ -38,6 +38,12 @@ class WrappedByteBuf(private val buffer: ByteBuffer)
   }
 
   /**
+   * Gets the underlying ByteBuffer
+   * @return the ByteBuffer
+   */
+  fun handle(): ByteBuffer = this.buffer
+
+  /**
    * Returns the number of bytes that can be read from the buffer
    * @return number of readable bytes
    */
