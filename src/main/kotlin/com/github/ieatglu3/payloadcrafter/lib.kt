@@ -590,8 +590,6 @@ abstract class CustomPayloadListener(private val registry: CustomPayloadRegistry
     val wrappedBuf = WrappedByteBuf(ByteBuffer.wrap(payloadMessage.data))
     val payload = payloadType.deserializer.read(wrappedBuf)
 
-    this.ensureConsumed(wrappedBuf, payloadMessage.channel)
-
     val event = PayloadEvent(
       payload as ServerboundCustomPayload,
       event.user,
@@ -624,8 +622,6 @@ abstract class CustomPayloadListener(private val registry: CustomPayloadRegistry
     val wrappedBuf = WrappedByteBuf(ByteBuffer.wrap(payloadMessage.data))
     val payload = payloadType.deserializer.read(wrappedBuf)
 
-    this.ensureConsumed(wrappedBuf, payloadMessage.channel)
-
     val event = PayloadEvent(
       payload as ClientboundCustomPayload,
       event.user,
@@ -649,10 +645,4 @@ abstract class CustomPayloadListener(private val registry: CustomPayloadRegistry
    * @param event the payload event
    */
   open fun onPayloadReceive(event: PayloadEvent<ServerboundCustomPayload>) {}
-
-  private fun ensureConsumed(wrappedBuf: WrappedByteBuf, channel: String)
-  {
-    if (wrappedBuf.readableBytes() > 0)
-      throw RuntimeException("payload deserializer did not consume all bytes for channel '$channel'")
-  }
 }
