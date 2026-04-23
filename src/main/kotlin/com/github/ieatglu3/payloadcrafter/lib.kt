@@ -17,6 +17,7 @@ import java.nio.charset.StandardCharsets
 import java.util.EnumMap
 import java.util.HashMap
 import java.util.Optional
+import java.util.UUID
 
 /**
  * A wrapper around ByteBuffer for easier serialization and deserialization of data
@@ -331,16 +332,111 @@ interface Deserializer<T: CustomPayload>
 }
 
 /**
+ * An identifier for a payload channel, consisting of a namespace and a path
+ * The channel string representation of this identifier is "namespace:path"
+ */
+data class Identifier(val namespace: String, val path: String)
+{
+  private val channel: String = "$namespace:$path"
+
+  companion object
+  {
+    /**
+     * Creates an identifier with the given namespace and path
+     * @param namespace the namespace of the identifier
+     * @param path the path of the identifier
+     * @return the created identifier
+     */
+    @JvmStatic
+    fun of(namespace: String, path: String): Identifier = Identifier(namespace, path)
+  }
+
+  /**
+   * Gets the channel string representation of this identifier
+   * @return the channel string
+   */
+  fun channel(): String = this.channel
+}
+
+/**
  * Metadata about a payload type
  */
 class CustomPayloadType(
   val clazz: Class<out CustomPayload>,
-  val id: String,
-  val channel: String,
+  val identifier: Identifier,
   val direction: PayloadDirection,
   val stateType: PayloadStateType,
   val deserializer: Deserializer<*>
 )
+{
+
+  @Deprecated("use the constructor with an Identifier instead", ReplaceWith("CustomPayloadType(clazz, Identifier(channel, id), direction, stateType, deserializer)"))
+  constructor(
+    clazz: Class<out CustomPayload>,
+    id: String,
+    channel: String,
+    direction: PayloadDirection,
+    stateType: PayloadStateType,
+    deserializer: Deserializer<*>
+  ): this(clazz, Identifier(channel, id), direction, stateType, deserializer)
+
+  companion object
+  {
+
+    /**
+     * Creates a serverbound payload type with the given parameters and a state type of config
+     * @param clazz the class of the payload
+     * @param identifier the unique identifier of the payload
+     * @param deserializer the deserializer for the payload
+     */
+    @JvmStatic
+    fun serverboundConfig(
+      clazz: Class<out ServerboundCustomPayload>,
+      identifier: Identifier,
+      deserializer: Deserializer<out ServerboundCustomPayload>
+    ): CustomPayloadType = CustomPayloadType(clazz, identifier, PayloadDirection.Serverbound, PayloadStateType.Config, deserializer)
+
+    /**
+     * Creates a clientbound payload type with the given parameters and a state type of config
+     * @param clazz the class of the payload
+     * @param identifier the unique identifier of the payload
+     * @param deserializer the deserializer for the payload
+     */
+    @JvmStatic
+    fun clientboundConfig(
+      clazz: Class<out ClientboundCustomPayload>,
+      identifier: Identifier,
+      deserializer: Deserializer<out ClientboundCustomPayload>
+    ): CustomPayloadType = CustomPayloadType(clazz, identifier, PayloadDirection.Clientbound, PayloadStateType.Config, deserializer)
+
+    /**
+     * Creates a serverbound payload type with the given parameters and a state type of play
+     * @param clazz the class of the payload
+     * @param identifier the unique identifier of the payload
+     * @param deserializer the deserializer for the payload
+     */
+    @JvmStatic
+    fun serverboundPlay(
+      clazz: Class<out ServerboundCustomPayload>,
+      identifier: Identifier,
+      deserializer: Deserializer<out ServerboundCustomPayload>
+    ): CustomPayloadType = CustomPayloadType(clazz, identifier, PayloadDirection.Serverbound, PayloadStateType.Play, deserializer)
+
+    /**
+     * Creates a clientbound payload type with the given parameters and a state type of play
+     * @param clazz the class of the payload
+     * @param identifier the unique identifier of the payload
+     * @param deserializer the deserializer for the payload
+     */
+    @JvmStatic
+    fun clientboundPlay(
+      clazz: Class<out ClientboundCustomPayload>,
+      identifier: Identifier,
+      deserializer: Deserializer<out ClientboundCustomPayload>
+    ): CustomPayloadType = CustomPayloadType(clazz, identifier, PayloadDirection.Clientbound, PayloadStateType.Play, deserializer)
+  }
+
+}
 
 /**
  * The base class for all payloads
@@ -372,7 +468,7 @@ abstract class ClientboundCustomPayload(type: CustomPayloadType) : CustomPayload
   fun send(user: User)
   {
     ChannelHelper.runInEventLoop(user.channel) {
-      val channel = this.type.channel
+      val channel = this.type.identifier.channel()
       val payloadBuffer = WrappedByteBuf(ByteBuffer.allocate(256))
       this.write(payloadBuffer)
       val payloadBytes = payloadBuffer.consume()
@@ -405,52 +501,22 @@ class CustomPayloadRegistryBuilder
   private val registeredIds = HashSet<String>()
 
   /**
-   * Registers a serverbound payload type with the given parameters
-   * @param clazz the class of the payload
-   * @param id the unique id of the payload
-   * @param channel the channel to register the payload on
-   * @param state the state type of the payload
-   * @param deserializer the deserializer for the payload
+   * Registers a payload type with the given parameters
+   * @param type the payload type to register
    * @return the registered payload type
-   * @throws IllegalArgumentException if a payload with the same id is already registered
+   * @throws IllegalArgumentException if a payload with the same identifier is already registered
    */
-  fun <P: ServerboundCustomPayload> registerServerbound(
-    clazz: Class<out ServerboundCustomPayload>,
-    id: String,
-    channel: String,
-    state: PayloadStateType,
-    deserializer: Deserializer<P>
-  ): CustomPayloadType
+  fun register(type: CustomPayloadType): CustomPayloadRegistryBuilder
   {
-    if (!this.registeredIds.add(id))
-      throw IllegalArgumentException("A serverbound payload with id '$id' is already registered")
-    val meta = CustomPayloadType(clazz, id, channel, PayloadDirection.Serverbound, state, deserializer)
-    this.serverbound.computeIfAbsent(channel) { PayloadStateTypeMap() }[state] = meta
-    return meta
-  }
-
-  /**
-   * Registers a clientbound payload type with the given parameters
-   * @param clazz the class of the payload
-   * @param id the unique id of the payload
-   * @param channel the channel to register the payload on
-   * @param state the state type of the payload
-   * @return the registered payload type
-   * @throws IllegalArgumentException if a payload with the same id is already registered
-   */
-  fun registerClientbound(
-    clazz: Class<out ClientboundCustomPayload>,
-    id: String,
-    channel: String,
-    state: PayloadStateType,
-    deserializer: Deserializer<*>
-  ): CustomPayloadType
-  {
-    if (!this.registeredIds.add(id))
-      throw IllegalArgumentException("A clientbound payload with id '$id' is already registered")
-    val meta = CustomPayloadType(clazz, id, channel, PayloadDirection.Clientbound, state, deserializer)
-    this.clientbound.computeIfAbsent(channel) { PayloadStateTypeMap() }[state] = meta
-    return meta
+    val channel = type.identifier.channel()
+    if (!this.registeredIds.add(channel))
+      throw IllegalArgumentException("A payload with channel '${channel}' is already registered")
+    when (type.direction)
+    {
+      PayloadDirection.Serverbound -> this.serverbound.computeIfAbsent(channel) { PayloadStateTypeMap() }[type.stateType] = type
+      PayloadDirection.Clientbound -> this.clientbound.computeIfAbsent(channel) { PayloadStateTypeMap() }[type.stateType] = type
+    }
+    return this
   }
 
   /**
@@ -460,26 +526,19 @@ class CustomPayloadRegistryBuilder
   fun build(): CustomPayloadRegistry = CustomPayloadRegistry(this.serverbound, this.clientbound)
 }
 
-class CustomPayloadRegistry(
+open class CustomPayloadRegistry(
   private val serverbound: HashMap<String, PayloadStateTypeMap<CustomPayloadType>>,
   private val clientbound: HashMap<String, PayloadStateTypeMap<CustomPayloadType>>
 )
 {
 
   companion object {
-
     /**
-     * Creates a payload registry using the provided builder function
-     * @param builder the builder function to use for registering payloads
-     * @return the created payload registry
+     * Creates a new payload registry builder
+     * @return builder
      */
     @JvmStatic
-    fun create(builder: (CustomPayloadRegistryBuilder) -> Unit): CustomPayloadRegistry
-    {
-      val customPayloadRegistryBuilder = CustomPayloadRegistryBuilder()
-      builder(customPayloadRegistryBuilder)
-      return customPayloadRegistryBuilder.build()
-    }
+    fun builder(): CustomPayloadRegistryBuilder = CustomPayloadRegistryBuilder()
   }
 
   /**
@@ -521,16 +580,35 @@ class PayloadEvent<P: CustomPayload>(
   fun bytes(): ByteArray = this.bytes
 
   /**
-   * Gets the user associated with this event
+   * Gets the PacketEvent's user associated with this event
    * @return the user of this event
    */
   fun user(): User = this.user
+
+  /**
+   * Gets the player's name associated with this event
+   * @return the player's name
+   */
+  fun playerName(): String = this.user.name
+
+  /**
+   * Gets the player's UUID associated with this event
+   * @return the player's UUID
+   */
+  fun playerUUID(): UUID = this.user.uuid
 
   /**
    * Gets the payload associated with this event
    * @return the payload of this event
    */
   fun payload(): P = this.payload
+
+  /**
+   * Casts the payload of this event to the specified type
+   * @return the casted payload
+   * @throws ClassCastException if the payload cannot be cast to the specified type
+   */
+  fun <Cast: P> payloadCasted(): Cast = this.payload as Cast
 
   /**
    * Gets the payload type of this event's payload
@@ -559,6 +637,8 @@ class PayloadEvent<P: CustomPayload>(
 abstract class CustomPayloadListener(private val registry: CustomPayloadRegistry, priority: PacketListenerPriority) : PacketListenerAbstract(priority) {
 
   private class PayloadMessage(val channel: String, val data: ByteArray, val state: PayloadStateType)
+
+  constructor(registry: CustomPayloadRegistry) : this(registry, PacketListenerPriority.NORMAL)
 
   /**
    * Starts this packet listener listening for packets
