@@ -333,23 +333,30 @@ interface Deserializer<T: CustomPayload>
 }
 
 /**
- * An identifier for a payload channel, consisting of a namespace and a path
- * The channel string representation of this identifier is "namespace:path"
+ * An identifier for a payload channel, consisting of a namespace, path and a channel string representation
  */
-data class Identifier(val namespace: String, val path: String)
+data class Identifier(val namespace: String, val path: String, private val channel: String)
 {
-  private val channel: String = "$namespace:$path"
-
   companion object
   {
     /**
      * Creates an identifier with the given namespace and path
      * @param namespace the namespace of the identifier
      * @param path the path of the identifier
+     * @return the created identifier, where the channel string representation is in the format "namespace:path"
+     */
+    @JvmStatic
+    fun of(namespace: String, path: String): Identifier = Identifier(namespace, path, "$namespace:$path")
+
+    /**
+     * Creates an identifier with the given namespace, path, and channel
+     * @param namespace the namespace of the identifier
+     * @param path the path of the identifier
+     * @param channel the channel string representation of this identifier
      * @return the created identifier
      */
     @JvmStatic
-    fun of(namespace: String, path: String): Identifier = Identifier(namespace, path)
+    fun ofChannel(namespace: String, path: String, channel: String): Identifier = Identifier(namespace, path, channel)
   }
 
   /**
