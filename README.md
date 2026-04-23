@@ -1,16 +1,20 @@
 payloadcrafter
 ==============
 
-A lightweight library for handling custom network payloads in Minecraft servers, with built-in serialization and deserialization support.
+[![PacketEvents](https://img.shields.io/badge/PacketEvents-2.11.1-4B8BBE?style=for-the-badge)](https://github.com/retrooper/packetevents)
+
+A lightweight library for crafting and handling custom network payloads in Minecraft servers, with built-in serialization and deserialization support.
 
 Features
 --------
 
 - Serverbound and Clientbound payloads ✅
 - Configuration and Play state payload support ✅
-- Automatic payload routing and deserialization ✅
-- Type-safe payload registry system ✅
+- Custom routing and handling of payloads ✅
+- Type-safe registry system ✅
 - Platform agonistic ✅
+
+###### Note: Requires PacketEvents
 
 ### Basic Usage
 
@@ -97,6 +101,11 @@ public class MyModPayloadListener extends CustomPayloadListener {
       System.out.println("Received handshake from " + player);
     }
   }
+
+  @Override
+  public void onPayloadSend(PayloadEvent<ClientboundCustomPayload> event) {
+    
+  }
 }
 
 public void onEnable() {
@@ -111,14 +120,22 @@ public void onDisable() {
 ###### Sending _Clientbound_ Payloads
 
 ```java
-public static void sendPayload(ClientboundCustomPayload payload, User player) {
-  payload.send(player);
-}
+User player = ...;
+ClientboundCustomPayload payload = ...;
 
-public static void sendPayload(ClientboundCustomPayload payload, UUID playerID) {
-  payload.send(playerID);
-}
+payload.send(player)
 ```
+
+```java
+UUID player = ...;
+ClientboundCustomPayload payload = ...;
+
+payload.send(player)
+```
+-------------
+
+#### See the examples folder for more detailed implementations and use cases.
+
 -------------
 
 ### Payload Types
@@ -134,6 +151,9 @@ Use the appropriate factory method when defining your payload type:
 - `CustomPayloadType.clientboundConfig(...)`
 - `CustomPayloadType.clientboundPlay(...)`
 
-### Registries
+---
+<div align="center">
 
-The `CustomPayloadRegistry` acts as a router for incoming payloads. All payloads must be registered before the listener starts to ensure they are properly recognized and deserialized.
+https://github.com/ieatglu3
+
+</div>
