@@ -1,0 +1,6 @@
+name: PayloadCrafterSpigotExample
+main: com.github.ieatglu3.payloadcrafter.example.spigot
+author: ieatglu3
+api-version: 1.13
+depends:
+  - packetevents

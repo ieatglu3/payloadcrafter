@@ -22,3 +22,11 @@ dependencies {
 tasks.test {
   useJUnitPlatform()
 }
+
+allprojects {
+  tasks {
+    withType<Jar> {
+      archiveBaseName = "${rootProject.name}-${project.name}"
+    }
+  }
+}
