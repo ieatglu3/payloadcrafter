@@ -315,10 +315,10 @@ enum class PayloadDirection {
 }
 
 /**
- * The state type of a payload, either config or play
+ * The state of a payload, either configuration or play
  */
-enum class PayloadStateType {
-  Config,
+enum class PayloadState {
+  Configuration,
   Play
 }
 
@@ -365,7 +365,7 @@ class CustomPayloadType(
   val clazz: Class<out CustomPayload>,
   val identifier: Identifier,
   val direction: PayloadDirection,
-  val stateType: PayloadStateType,
+  val stateType: PayloadState,
   val deserializer: Deserializer<*>
 )
 {
@@ -376,7 +376,7 @@ class CustomPayloadType(
     id: String,
     channel: String,
     direction: PayloadDirection,
-    stateType: PayloadStateType,
+    stateType: PayloadState,
     deserializer: Deserializer<*>
   ): this(clazz, Identifier(channel, id), direction, stateType, deserializer)
 
@@ -394,7 +394,7 @@ class CustomPayloadType(
       clazz: Class<out ServerboundCustomPayload>,
       identifier: Identifier,
       deserializer: Deserializer<out ServerboundCustomPayload>
-    ): CustomPayloadType = CustomPayloadType(clazz, identifier, PayloadDirection.Serverbound, PayloadStateType.Config, deserializer)
+    ): CustomPayloadType = CustomPayloadType(clazz, identifier, PayloadDirection.Serverbound, PayloadState.Configuration, deserializer)
 
     /**
      * Creates a clientbound payload type with the given parameters and a state type of config
@@ -407,7 +407,7 @@ class CustomPayloadType(
       clazz: Class<out ClientboundCustomPayload>,
       identifier: Identifier,
       deserializer: Deserializer<out ClientboundCustomPayload>
-    ): CustomPayloadType = CustomPayloadType(clazz, identifier, PayloadDirection.Clientbound, PayloadStateType.Config, deserializer)
+    ): CustomPayloadType = CustomPayloadType(clazz, identifier, PayloadDirection.Clientbound, PayloadState.Configuration, deserializer)
 
     /**
      * Creates a serverbound payload type with the given parameters and a state type of play
@@ -420,7 +420,7 @@ class CustomPayloadType(
       clazz: Class<out ServerboundCustomPayload>,
       identifier: Identifier,
       deserializer: Deserializer<out ServerboundCustomPayload>
-    ): CustomPayloadType = CustomPayloadType(clazz, identifier, PayloadDirection.Serverbound, PayloadStateType.Play, deserializer)
+    ): CustomPayloadType = CustomPayloadType(clazz, identifier, PayloadDirection.Serverbound, PayloadState.Play, deserializer)
 
     /**
      * Creates a clientbound payload type with the given parameters and a state type of play
@@ -433,7 +433,7 @@ class CustomPayloadType(
       clazz: Class<out ClientboundCustomPayload>,
       identifier: Identifier,
       deserializer: Deserializer<out ClientboundCustomPayload>
-    ): CustomPayloadType = CustomPayloadType(clazz, identifier, PayloadDirection.Clientbound, PayloadStateType.Play, deserializer)
+    ): CustomPayloadType = CustomPayloadType(clazz, identifier, PayloadDirection.Clientbound, PayloadState.Play, deserializer)
   }
 
 }
@@ -474,8 +474,8 @@ abstract class ClientboundCustomPayload(type: CustomPayloadType) : CustomPayload
       val payloadBytes = payloadBuffer.consume()
       val packet = when (this.type.stateType)
       {
-        PayloadStateType.Config -> WrapperConfigServerPluginMessage(channel, payloadBytes)
-        PayloadStateType.Play -> WrapperPlayServerPluginMessage(channel, payloadBytes)
+        PayloadState.Configuration -> WrapperConfigServerPluginMessage(channel, payloadBytes)
+        PayloadState.Play -> WrapperPlayServerPluginMessage(channel, payloadBytes)
       }
       user.sendPacket(packet)
     }
@@ -487,7 +487,7 @@ abstract class ClientboundCustomPayload(type: CustomPayloadType) : CustomPayload
  */
 abstract class ServerboundCustomPayload(type: CustomPayloadType) : CustomPayload(type)
 
-class PayloadStateTypeMap<V> : EnumMap<PayloadStateType, V>(PayloadStateType::class.java)
+class PayloadStateTypeMap<V> : EnumMap<PayloadState, V>(PayloadState::class.java)
 
 /**
  * A builder for creating a custom payload registry
@@ -548,7 +548,7 @@ open class CustomPayloadRegistry(
    * @param channel the channel of the payload
    * @return the payload type if found, or null if not found
    */
-  fun get(direction: PayloadDirection, stateType: PayloadStateType, channel: String): CustomPayloadType?
+  fun get(direction: PayloadDirection, stateType: PayloadState, channel: String): CustomPayloadType?
   {
     return when (direction)
     {
@@ -636,7 +636,7 @@ class PayloadEvent<P: CustomPayload>(
  */
 abstract class CustomPayloadListener(private val registry: CustomPayloadRegistry, priority: PacketListenerPriority) : PacketListenerAbstract(priority) {
 
-  private class PayloadMessage(val channel: String, val data: ByteArray, val state: PayloadStateType)
+  private class PayloadMessage(val channel: String, val data: ByteArray, val state: PayloadState)
 
   constructor(registry: CustomPayloadRegistry) : this(registry, PacketListenerPriority.NORMAL)
 
@@ -657,11 +657,11 @@ abstract class CustomPayloadListener(private val registry: CustomPayloadRegistry
     {
       PacketType.Play.Client.PLUGIN_MESSAGE -> {
         val wrapper = WrapperPlayClientPluginMessage(event)
-        PayloadMessage(wrapper.channelName, wrapper.data, PayloadStateType.Play)
+        PayloadMessage(wrapper.channelName, wrapper.data, PayloadState.Play)
       }
       PacketType.Configuration.Client.PLUGIN_MESSAGE -> {
         val wrapper = WrapperConfigClientPluginMessage(event)
-        PayloadMessage(wrapper.channelName, wrapper.data, PayloadStateType.Config)
+        PayloadMessage(wrapper.channelName, wrapper.data, PayloadState.Configuration)
       }
       else -> return
     }
@@ -689,11 +689,11 @@ abstract class CustomPayloadListener(private val registry: CustomPayloadRegistry
     {
       PacketType.Play.Server.PLUGIN_MESSAGE -> {
         val wrapper = WrapperPlayServerPluginMessage(event)
-        PayloadMessage(wrapper.channelName, wrapper.data, PayloadStateType.Play)
+        PayloadMessage(wrapper.channelName, wrapper.data, PayloadState.Play)
       }
       PacketType.Configuration.Server.PLUGIN_MESSAGE -> {
         val wrapper = WrapperConfigServerPluginMessage(event)
-        PayloadMessage(wrapper.channelName, wrapper.data, PayloadStateType.Config)
+        PayloadMessage(wrapper.channelName, wrapper.data, PayloadState.Configuration)
       }
       else -> return
     }
