@@ -463,6 +463,17 @@ abstract class ClientboundCustomPayload(type: CustomPayloadType) : CustomPayload
   abstract fun write(buffer: WrappedByteBuf)
 
   /**
+   * Sends this payload to the user with the given UUID
+   * @param userUUID the UUID of the user to send the payload to
+   * @throws IllegalArgumentException if no user is found with the given UUID
+   */
+  fun send(userUUID: UUID)
+  {
+    val user = ensurePacketEvents().playerManager.getUser(userUUID) ?: throw IllegalArgumentException("no user found with UUID: $userUUID")
+    this.send(user)
+  }
+
+  /**
    * Sends this payload to the given user
    * @param user the user to send the payload to
    */
