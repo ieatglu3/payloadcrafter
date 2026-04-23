@@ -1,6 +1,7 @@
 package com.github.ieatglu3.payloadcrafter
 
 import com.github.retrooper.packetevents.PacketEvents
+import com.github.retrooper.packetevents.PacketEventsAPI
 import com.github.retrooper.packetevents.event.PacketListenerAbstract
 import com.github.retrooper.packetevents.event.PacketListenerPriority
 import com.github.retrooper.packetevents.event.PacketReceiveEvent
@@ -643,12 +644,12 @@ abstract class CustomPayloadListener(private val registry: CustomPayloadRegistry
   /**
    * Starts this packet listener listening for packets
    */
-  fun startListening() { PacketEvents.getAPI().eventManager.registerListener(this) }
+  fun startListening() { ensurePacketEvents().eventManager.registerListener(this) }
 
   /**
    * Stops this packet listener from listening for packets
    */
-  fun stopListening() { PacketEvents.getAPI().eventManager.unregisterListener(this) }
+  fun stopListening() { ensurePacketEvents().eventManager.unregisterListener(this) }
 
   final override fun onPacketReceive(event: PacketReceiveEvent)
   {
@@ -725,4 +726,12 @@ abstract class CustomPayloadListener(private val registry: CustomPayloadRegistry
    * @param event the payload event
    */
   open fun onPayloadReceive(event: PayloadEvent<ServerboundCustomPayload>) {}
+}
+
+private fun ensurePacketEvents(): PacketEventsAPI<*>
+{
+  val api = PacketEvents.getAPI() ?: throw IllegalStateException("PacketEvents API is not available: is PacketEvents installed?")
+  if (!api.isInitialized)
+    throw IllegalStateException("PacketEvents API is not initialized")
+  return api
 }
