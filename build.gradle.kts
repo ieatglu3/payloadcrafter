@@ -1,6 +1,7 @@
 plugins {
   id("java")
   kotlin("jvm") version "1.9.20"
+  id("maven-publish")
 }
 
 group = "com.github.ieatglu3"
@@ -19,14 +20,22 @@ dependencies {
   testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
+java {
+  withSourcesJar()
+  withJavadocJar()
+}
+
 tasks.test {
   useJUnitPlatform()
 }
 
-allprojects {
-  tasks {
-    withType<Jar> {
-      archiveBaseName = "${rootProject.name}-${project.name}"
+publishing {
+  publications {
+    create<MavenPublication>("mavenJava") {
+      from(components["java"])
+      groupId = project.group.toString()
+      artifactId = "payloadcrafter"
+      version = project.version.toString()
     }
   }
 }
