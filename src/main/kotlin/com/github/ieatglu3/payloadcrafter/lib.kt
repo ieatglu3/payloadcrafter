@@ -378,16 +378,6 @@ class CustomPayloadType(
 )
 {
 
-  @Deprecated("use the constructor with an Identifier instead", ReplaceWith("CustomPayloadType(clazz, Identifier(channel, id), direction, stateType, deserializer)"))
-  constructor(
-    clazz: Class<out CustomPayload>,
-    id: String,
-    channel: String,
-    direction: PayloadDirection,
-    stateType: PayloadState,
-    deserializer: Deserializer<*>
-  ): this(clazz, Identifier(channel, id), direction, stateType, deserializer)
-
   companion object
   {
 
